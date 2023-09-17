@@ -8,14 +8,12 @@ def float_range(start, stop, step):
         yield start
         start += step
 
-
 class Opcode_nop(Opcode):
     def __init__(self, OSO, index):
         Opcode.__init__(self, OSO, index)
 
     def Generate(self, nodeGraph):
         pass
-
 
 class Opcode_assign(Opcode_DS):
     def __init__(self, OSO, index):
@@ -47,14 +45,12 @@ class Opcode_assign(Opcode_DS):
             print("Unhandled assign %s->%s" %
                   (self.Source.dataType, self.Destination.dataType))
 
-
 class Opcode_return(Opcode):
     def __init__(self, OSO, index):
         Opcode.__init__(self, OSO, index)
 
     def Generate(self, nodeGraph):
         pass
-
 
 class Opcode_dot(Opcode_DSS):
     def __init__(self, OSO, index):
@@ -67,47 +63,9 @@ class Opcode_dot(Opcode_DSS):
         nodeGraph.AddLink(node, 1, self.Source2)
         nodeGraph.SetVar(self.Destination, node, 1)
 
-
-class Opcode_length(Opcode_DS):
+class Opcode_length(Opcode_basicMath1):
     def __init__(self, OSO, index):
-        Opcode_DS.__init__(self, OSO, index)
-
-    def Generate(self, nodeGraph):
-        node = nodeGraph.CreateNode('ShaderNodeSeparateXYZ')
-        nodeGraph.AddLink(node, 0, self.Source)
-
-        nodex = nodeGraph.CreateNode('ShaderNodeMath')
-        nodex.SetProperty("operation", "MULTIPLY")
-        nodeGraph.AddNodeLink(nodex, 0, node, 0)
-        nodeGraph.AddNodeLink(nodex, 1, node, 0)
-
-        nodey = nodeGraph.CreateNode('ShaderNodeMath')
-        nodey.SetProperty("operation", "MULTIPLY")
-        nodeGraph.AddNodeLink(nodey, 0, node, 1)
-        nodeGraph.AddNodeLink(nodey, 1, node, 1)
-
-        nodez = nodeGraph.CreateNode('ShaderNodeMath')
-        nodez.SetProperty("operation", "MULTIPLY")
-        nodeGraph.AddNodeLink(nodez, 0, node, 2)
-        nodeGraph.AddNodeLink(nodez, 1, node, 2)
-
-        node_add_xy = nodeGraph.CreateNode('ShaderNodeMath')
-        node_add_xy.SetProperty("operation", "ADD")
-        nodeGraph.AddNodeLink(node_add_xy, 0, nodex, 0)
-        nodeGraph.AddNodeLink(node_add_xy, 1, nodey, 0)
-
-        node_add_xyz = nodeGraph.CreateNode('ShaderNodeMath')
-        node_add_xyz.SetProperty("operation", "ADD")
-        nodeGraph.AddNodeLink(node_add_xyz, 0, node_add_xy, 0)
-        nodeGraph.AddNodeLink(node_add_xyz, 1, nodez, 0)
-
-        node_pow = nodeGraph.CreateNode('ShaderNodeMath')
-        node_pow.SetProperty("operation", "POWER")
-        nodeGraph.AddNodeLink(node_pow, 0, node_add_xyz, 0)
-        node_pow.SetProperty("inputs[1].default_value", "0.5")
-
-        nodeGraph.SetVar(self.Destination, node_pow, 0)
-
+        Opcode_basicMath1.__init__(self, OSO, index, 'FLOOR')
 
 class Opcode_sqrt(Opcode_DS):
     def __init__(self, OSO, index):
@@ -116,27 +74,23 @@ class Opcode_sqrt(Opcode_DS):
     def Generate(self, nodeGraph):
         if (self.Source.IsNumeric()):
             node = nodeGraph.CreateNode('ShaderNodeMath')
-            node.SetProperty("operation", "POWER")
+            node.SetProperty("operation", "SQRT")
             nodeGraph.AddLink(node, 0, self.Source)
-            node.SetProperty("inputs[1].default_value", "0.5")
             nodeGraph.SetVar(self.Destination, node, 0)
         elif (self.Source.IsPointLike()):
             node = nodeGraph.CreateNode('ShaderNodeSeparateXYZ')
             nodeGraph.AddLink(node, 0, self.Source)
 
             nodex = nodeGraph.CreateNode("ShaderNodeMath")
-            nodex.SetProperty("operation", "POWER")
-            nodex.SetProperty("inputs[1].default_value", "0.5")
+            nodex.SetProperty("operation", "SQRT")
             nodeGraph.AddNodeLink(nodex, 0, node, 0)
 
             nodey = nodeGraph.CreateNode("ShaderNodeMath")
-            nodey.SetProperty("operation", "POWER")
-            nodey.SetProperty("inputs[1].default_value", "0.5")
+            nodey.SetProperty("operation", "SQRT")
             nodeGraph.AddNodeLink(nodey, 0, node, 1)
 
             nodez = nodeGraph.CreateNode("ShaderNodeMath")
-            nodez.SetProperty("operation", "POWER")
-            nodez.SetProperty("inputs[1].default_value", "0.5")
+            nodez.SetProperty("operation", "SQRT")
             nodeGraph.AddNodeLink(nodez, 0, node, 2)
 
             nodeOut = nodeGraph.CreateNode('ShaderNodeCombineXYZ')
@@ -150,81 +104,70 @@ class Opcode_neg(Opcode_DS):
         Opcode_DS.__init__(self, OSO, index)
 
     def Generate(self, nodeGraph):
-        node = nodeGraph.CreateNode('ShaderNodeMath')
-        node.SetProperty("operation", "MULTIPLY")
-        nodeGraph.AddLink(node, 0, self.Source)
-        node.SetProperty("inputs[1].default_value", "-1")
-        nodeGraph.SetVar(self.Destination, node, 0)
+        if (self.Source.IsNumeric()):
+            node = nodeGraph.CreateNode('ShaderNodeMath')
+            node.SetProperty("operation", "MULTIPLY")
+            nodeGraph.AddLink(node, 0, self.Source)
+            node.SetProperty("inputs[1].default_value", "-1.0")
+            nodeGraph.SetVar(self.Destination, node, 0)
+        elif (self.Source.IsPointLike()):
+            node = nodeGraph.CreateNode('ShaderNodeVectorMath')
+            node.SetProperty("operation", "SCALE")
+            nodeGraph.AddLink(node, 0, self.Source)
+            node.SetProperty("inputs[3].default_value", "-1.0")
+            nodeGraph.SetVar(self.Destination, node, 0)
 
-
-class Opcode_floor(Opcode_DS):
+class Opcode_floor(Opcode_basicMath1):
     def __init__(self, OSO, index):
-        Opcode_DS.__init__(self, OSO, index)
+        Opcode_basicMath1.__init__(self, OSO, index, 'FLOOR')
 
-    def Generate(self, nodeGraph):
-        node = nodeGraph.CreateNode('ShaderNodeMath')
-        node.SetProperty("operation", "SUBTRACT")
-        nodeGraph.AddLink(node, 0, self.Source)
-
-        node.SetProperty("inputs[1].default_value", "0.5")
-        node2 = nodeGraph.CreateNode('ShaderNodeMath')
-        node2.SetProperty("operation", "ROUND")
-        node2.SetProperty("inputs[1].default_value", "0.5")
-        nodeGraph.AddNodeLink(node2, 0, node, 0)
-
-        nodeGraph.SetVar(self.Destination, node2, 0)
-
-
-class Opcode_ceil(Opcode_DS):
+class Opcode_ceil(Opcode_basicMath1):
     def __init__(self, OSO, index):
-        Opcode_DS.__init__(self, OSO, index)
-
-    def Generate(self, nodeGraph):
-        node = nodeGraph.CreateNode('ShaderNodeMath')
-        node.SetProperty("operation", "ADD")
-        nodeGraph.AddLink(node, 0, self.Source)
-
-        node.SetProperty("inputs[1].default_value", "0.5")
-        node2 = nodeGraph.CreateNode('ShaderNodeMath')
-        node2.SetProperty("operation", "ROUND")
-        node2.SetProperty("inputs[1].default_value", "0.5")
-        nodeGraph.AddNodeLink(node2, 0, node, 0)
-
-        nodeGraph.SetVar(self.Destination, node2, 0)
-
+        Opcode_basicMath1.__init__(self, OSO, index, 'CEIL')
 
 class Opcode_abs(Opcode_basicMath1):
     def __init__(self, OSO, index):
         Opcode_basicMath1.__init__(self, OSO, index, 'ABSOLUTE')
 
+class Opcode_fract(Opcode_basicMath1):
+    def __init__(self, OSO, index):
+        Opcode_basicMath1.__init__(self, OSO, index, 'FRACT')
 
 class Opcode_exp(Opcode_DS):
     def __init__(self, OSO, index):
         Opcode_DS.__init__(self, OSO, index)
 
     def Generate(self, nodeGraph):
-        node = nodeGraph.CreateNode('ShaderNodeMath')
-        node.SetProperty("operation", "POWER")
-        node.SetProperty("inputs[0].default_value", "2.718281828459")
-        nodeGraph.AddLink(node, 1, self.Source)
-        nodeGraph.SetVar(self.Destination, node, 0)
+        if (self.Source.IsNumeric()):
+            node = nodeGraph.CreateNode('ShaderNodeMath')
+            node.SetProperty("operation", "EXPONENT")
+            nodeGraph.AddLink(node, 0, self.Source)
+            nodeGraph.SetVar(self.Destination, node, 0)
+        elif (self.Source.IsPointLike()):
+            node = nodeGraph.CreateNode('ShaderNodeSeparateXYZ')
+            nodeGraph.AddLink(node, 0, self.Source)
 
+            nodex = nodeGraph.CreateNode("ShaderNodeMath")
+            nodex.SetProperty("operation", "EXPONENT")
+            nodeGraph.AddNodeLink(nodex, 0, node, 0)
 
-class Opcode_sign(Opcode_DS):
+            nodey = nodeGraph.CreateNode("ShaderNodeMath")
+            nodey.SetProperty("operation", "EXPONENT")
+            nodeGraph.AddNodeLink(nodey, 0, node, 1)
+
+            nodez = nodeGraph.CreateNode("ShaderNodeMath")
+            nodez.SetProperty("operation", "EXPONENT")
+            nodeGraph.AddNodeLink(nodez, 0, node, 2)
+
+            nodeOut = nodeGraph.CreateNode('ShaderNodeCombineXYZ')
+            nodeGraph.AddNodeLink(nodeOut, 0, nodex, 0)
+            nodeGraph.AddNodeLink(nodeOut, 1, nodey, 0)
+            nodeGraph.AddNodeLink(nodeOut, 2, nodez, 0)
+            nodeGraph.SetVar(self.Destination, nodeOut, 0)
+
+class Opcode_sign(Opcode_basicMath1):
     def __init__(self, OSO, index):
-        Opcode_DS.__init__(self, OSO, index)
-
-    def Generate(self, nodeGraph):
-        node = nodeGraph.CreateNode('ShaderNodeMath')
-        node.SetProperty("operation", "ABSOLUTE")
-        nodeGraph.AddLink(node, 0, self.Source)
-
-        node2 = nodeGraph.CreateNode('ShaderNodeMath')
-        node2.SetProperty("operation", "DIVIDE")
-        nodeGraph.AddNodeLink(node2, 0, node, 0)
-        nodeGraph.AddLink(node2, 1, self.Source)
-        nodeGraph.SetVar(self.Destination, node2, 0)
-
+        Opcode_basicMath1.__init__(self, OSO, index, 'SIGN')
 
 class Opcode_sincos(Opcode_SDD):
     def __init__(self, OSO, index):
@@ -241,28 +184,16 @@ class Opcode_sincos(Opcode_SDD):
         nodeGraph.AddLink(node2, 0, self.Source)
         nodeGraph.SetVar(self.Destination2, node, 0)
 
-
 class Opcode_distance(Opcode_DSS):
     def __init__(self, OSO, index):
         Opcode_DSS.__init__(self, OSO, index)
 
     def Generate(self, nodeGraph):
-        node = nodeGraph.CreateNode("ShaderNodeVectorMath")
-        node.SetProperty("operation", "SUBTRACT")
+        node = nodeGraph.CreateNode('ShaderNodeVectorMath')
+        node.SetProperty("operation", "DISTANCE")
         nodeGraph.AddLink(node, 0, self.Source1)
         nodeGraph.AddLink(node, 1, self.Source2)
-
-        node2 = nodeGraph.CreateNode('ShaderNodeVectorMath')
-        node2.SetProperty("operation", "DOT_PRODUCT")
-        nodeGraph.AddNodeLink(node2, 0, node, 0)
-        nodeGraph.AddNodeLink(node2, 1, node, 0)
-
-        node3 = nodeGraph.CreateNode('ShaderNodeMath')
-        node3.SetProperty("operation", "POWER")
-        nodeGraph.AddNodeLink(node3, 0, node2, 1)
-        node3.SetProperty("inputs[1].default_value", "0.5")
-        nodeGraph.SetVar(self.Destination, node3, 0)
-
+        nodeGraph.SetVar(self.Destination, node, 1)
 
 class Opcode_smoothstep(Opcode):
     def __init__(self, OSO, index):
@@ -311,56 +242,49 @@ class Opcode_fabs(Opcode_basicMath1):
     def __init__(self, OSO, index):
         Opcode_basicMath1.__init__(self, OSO, index, 'ABSOLUTE')
 
-
 class Opcode_cos(Opcode_basicMath1):
     def __init__(self, OSO, index):
         Opcode_basicMath1.__init__(self, OSO, index, 'COSINE')
-
 
 class Opcode_acos(Opcode_basicMath1):
     def __init__(self, OSO, index):
         Opcode_basicMath1.__init__(self, OSO, index, 'ARCCOSINE')
 
-
 class Opcode_asin(Opcode_basicMath1):
     def __init__(self, OSO, index):
         Opcode_basicMath1.__init__(self, OSO, index, 'ARCSINE')
-
 
 class Opcode_atan(Opcode_basicMath1):
     def __init__(self, OSO, index):
         Opcode_basicMath1.__init__(self, OSO, index, 'ARCTANGENT')
 
-
 class Opcode_sin(Opcode_basicMath1):
     def __init__(self, OSO, index):
         Opcode_basicMath1.__init__(self, OSO, index, 'SINE')
 
+class Opcode_tan(Opcode_basicMath1):
+    def __init__(self, OSO, index):
+        Opcode_basicMath1.__init__(self, OSO, index, 'TANGENT')
 
 class Opcode_min(Opcode_basicMath):
     def __init__(self, OSO, index):
         Opcode_basicMath.__init__(self, OSO, index, "MINIMUM")
 
-
 class Opcode_max(Opcode_basicMath):
     def __init__(self, OSO, index):
         Opcode_basicMath.__init__(self, OSO, index, "MAXIMUM")
-
 
 class Opcode_div(Opcode_basicMath):
     def __init__(self, OSO, index):
         Opcode_basicMath.__init__(self, OSO, index, "DIVIDE")
 
-
 class Opcode_mul(Opcode_basicMath):
     def __init__(self, OSO, index):
         Opcode_basicMath.__init__(self, OSO, index, "MULTIPLY")
 
-
 class Opcode_pow(Opcode_basicMath):
     def __init__(self, OSO, index):
         Opcode_basicMath.__init__(self, OSO, index, "POWER")
-
 
 class Opcode_add(Opcode_basicMath):
     def __init__(self, OSO, index):
@@ -368,28 +292,9 @@ class Opcode_add(Opcode_basicMath):
 
 # https://blenderartists.org/forum/showthread.php?420857-What-can-you-do-with-lyapuno-and-mandelbrot-procedural-nodes&p=3184448&viewfull=1#post3184448
 
-
-class Opcode_atan2(Opcode_DSS):
+class Opcode_atan2(Opcode_basicMath):
     def __init__(self, OSO, index):
-        Opcode_DSS.__init__(self, OSO, index)
-
-    def Generate(self, nodeGraph):
-        node = nodeGraph.CreateNode('ShaderNodeCombineXYZ')
-        nodeGraph.AddLink(node, 0, self.Source2)
-        nodeGraph.AddLink(node, 1, self.Source1)
-        grad = nodeGraph.CreateNode('ShaderNodeTexGradient')
-        grad.SetProperty("gradient_type", "'RADIAL'")
-        nodeGraph.AddNodeLink(grad, 0, node, 0)
-        nodem1 = nodeGraph.CreateNode('ShaderNodeMath')
-        nodem1.SetProperty("operation", "SUBTRACT")
-        nodem1.SetProperty("inputs[1].default_value", "0.5")
-        nodeGraph.AddNodeLink(nodem1, 0, grad, 1)
-        nodem2 = nodeGraph.CreateNode('ShaderNodeMath')
-        nodem2.SetProperty("operation", "MULTIPLY")
-        nodem2.SetProperty("inputs[1].default_value", "6.2831854")
-        nodeGraph.AddNodeLink(nodem2, 0, nodem1, 0)
-        nodeGraph.SetVar(self.Destination, nodem2, 0)
-
+        Opcode_basicMath.__init__(self, OSO, index, "ARCTAN2")
 
 class Opcode_xor(Opcode_DSS):
     def __init__(self, OSO, index):
@@ -406,57 +311,17 @@ class Opcode_xor(Opcode_DSS):
         nodeGraph.AddNodeLink(nodem2, 0, nodem1, 0)
         nodeGraph.SetVar(self.Destination, nodem2, 0)
 
-
 class Opcode_sub(Opcode_basicMath):
     def __init__(self, OSO, index):
         Opcode_basicMath.__init__(self, OSO, index, "SUBTRACT")
-
 
 class Opcode_fmod(Opcode_basicMath):
     def __init__(self, OSO, index):
         Opcode_basicMath.__init__(self, OSO, index, "MODULO")
 
-# mod(a,b) = A-B*(floor(a/b))
-
-
-class Opcode_mod(Opcode_DSS):
+class Opcode_mod(Opcode_basicMath):
     def __init__(self, OSO, index):
-        Opcode_DSS.__init__(self, OSO, index)
-
-    def Generate(self, nodeGraph):
-        # a/b
-        node_adivb = nodeGraph.CreateNode('ShaderNodeMath')
-        nodeGraph.AddLink(node_adivb, 0, self.Source1)
-        nodeGraph.AddLink(node_adivb, 1, self.Source2)
-        node_adivb.SetProperty("operation", "DIVIDE")
-
-        # ((a/b)-0.5)
-        node_floor1 = nodeGraph.CreateNode('ShaderNodeMath')
-        node_floor1.SetProperty("inputs[1].default_value", "0.5")
-        node_floor1.SetProperty("operation", "SUBTRACT")
-        nodeGraph.AddNodeLink(node_floor1, 0, node_adivb, 0)
-
-        # round((a/b)-0.5) = floor(a/b)
-        node_floor2 = nodeGraph.CreateNode('ShaderNodeMath')
-        node_floor2.SetProperty("operation", "ROUND")
-        node_floor2.SetProperty("inputs[1].default_value", "0.5")
-        nodeGraph.AddNodeLink(node_floor2, 0, node_floor1, 0)
-
-        # B * floor(a/b)
-        node_mul = nodeGraph.CreateNode('ShaderNodeMath')
-        node_mul.SetProperty("operation", "MULTIPLY")
-        nodeGraph.AddLink(node_mul, 0, self.Source2)
-        nodeGraph.AddNodeLink(node_mul, 1, node_floor2, 0)
-
-        # A - B * floor(a/b)
-        node_sub = nodeGraph.CreateNode('ShaderNodeMath')
-        node_sub.SetProperty("operation", "SUBTRACT")
-        nodeGraph.AddLink(node_sub, 0, self.Source1)
-        nodeGraph.AddNodeLink(node_sub, 1, node_mul, 0)
-
-        # set output
-        nodeGraph.SetVar(self.Destination, node_sub, 0)
-
+        Opcode_basicMath.__init__(self, OSO, index, "MODULO")
 
 class Opcode_lt(Opcode_basicMath):
     def __init__(self, OSO, index):
@@ -464,16 +329,13 @@ class Opcode_lt(Opcode_basicMath):
 
 # todo le != lt, equal bit is missing...
 
-
 class Opcode_le(Opcode_basicMath):
     def __init__(self, OSO, index):
         Opcode_basicMath.__init__(self, OSO, index, "LESS_THAN")
 
-
 class Opcode_gt(Opcode_basicMath):
     def __init__(self, OSO, index):
         Opcode_basicMath.__init__(self, OSO, index, "GREATER_THAN")
-
 
 class Opcode_ge(Opcode_DSS):
     def __init__(self, OSO, index):
@@ -515,7 +377,6 @@ class Opcode_ge(Opcode_DSS):
 
         nodeGraph.SetVar(self.Destination, node6, 0)
 
-
 class Opcode_eq(Opcode_DSS):
     def __init__(self, OSO, index):
         Opcode_DSS.__init__(self, OSO, index)
@@ -536,7 +397,6 @@ class Opcode_eq(Opcode_DSS):
         node3.SetProperty("inputs[1].default_value", "0.000001")
         nodeGraph.SetVar(self.Destination, node3, 0)
 
-
 class Opcode_aassign(Opcode_DSS):
     def __init__(self, OSO, index):
         Opcode_DSS.__init__(self, OSO, index)
@@ -549,7 +409,6 @@ class Opcode_aassign(Opcode_DSS):
         destvar = self.Destination.Name + "_" + self.Source1.defaults[0]
         nodeGraph.AAssign(destvar, self.Source2)
 
-
 class Opcode_aref(Opcode_DSS):
     def __init__(self, OSO, index):
         Opcode_DSS.__init__(self, OSO, index)
@@ -561,7 +420,6 @@ class Opcode_aref(Opcode_DSS):
             print("Target not an array")
         sourcevar = self.Source1.Name + "_" + self.Source2.defaults[0]
         nodeGraph.ARef(self.Destination, sourcevar)
-
 
 class Opcode_neq(Opcode_DSS):
     def __init__(self, OSO, index):
@@ -583,7 +441,6 @@ class Opcode_neq(Opcode_DSS):
         node3.SetProperty("inputs[1].default_value", "0.00001")
         nodeGraph.SetVar(self.Destination, node3, 0)
 
-
 class Opcode_point(Opcode_DSSS):
     def __init__(self, OSO, index):
         Opcode_DSSS.__init__(self, OSO, index)
@@ -594,7 +451,6 @@ class Opcode_point(Opcode_DSSS):
         nodeGraph.AddLink(node, 1, self.Source2)
         nodeGraph.AddLink(node, 2, self.Source3)
         nodeGraph.SetVar(self.Destination, node, 0)
-
 
 class Opcode_vector(Opcode_DSSS):
     def __init__(self, OSO, index):
@@ -607,11 +463,9 @@ class Opcode_vector(Opcode_DSSS):
         nodeGraph.AddLink(node, 2, self.Source3)
         nodeGraph.SetVar(self.Destination, node, 0)
 
-
 class Opcode_color(Opcode_vector):
     def __init__(self, OSO, index):
         Opcode_vector.__init__(self, OSO, index)
-
 
 class Opcode_mix(Opcode_DSSS):
     def __init__(self, OSO, index):
@@ -626,17 +480,9 @@ class Opcode_mix(Opcode_DSSS):
         nodeGraph.AddLink(node, 2, self.Source2)
         nodeGraph.SetVar(self.Destination, node, 0)
 
-
-class Opcode_normalize(Opcode_DS):
+class Opcode_normalize(Opcode_basicMath1):
     def __init__(self, OSO, index):
-        Opcode_DS.__init__(self, OSO, index)
-
-    def Generate(self, nodeGraph):
-        node = nodeGraph.CreateNode("ShaderNodeVectorMath")
-        node.SetProperty("operation", "NORMALIZE")
-        nodeGraph.AddLink(node, 0, self.Source)
-        nodeGraph.SetVar(self.Destination, node, 0)
-
+        Opcode_basicMath1.__init__(self, OSO, index, "NORMALIZE")
 
 class Opcode_backfacing(Opcode_D):
     def __init__(self, OSO, index):
@@ -645,8 +491,7 @@ class Opcode_backfacing(Opcode_D):
     def Generate(self, nodeGraph):
         node = nodeGraph.CreateNode("ShaderNodeGeometry")
         nodeGraph.SetVar(self.Destination, node, 6)
-
-    
+   
 class Opcode_isconnected(Opcode_DS):
     def __init__(self, OSO, index):
         Opcode_DS.__init__(self, OSO, index)
@@ -656,17 +501,9 @@ class Opcode_isconnected(Opcode_DS):
         node.SetProperty('outputs[0].default_value', 1)
         nodeGraph.SetVar(self.Destination, node, 0)
 
-
-class Opcode_cross(Opcode_DSS):
+class Opcode_cross(Opcode_basicMath):
     def __init__(self, OSO, index):
-        Opcode_DSS.__init__(self, OSO, index)
-
-    def Generate(self, nodeGraph):
-        node = nodeGraph.CreateNode("ShaderNodeVectorMath")
-        node.SetProperty("operation", "CROSS_PRODUCT")
-        nodeGraph.AddLink(node, 0, self.Source1)
-        nodeGraph.AddLink(node, 1, self.Source2)
-        nodeGraph.SetVar(self.Destination, node, 0)
+        Opcode_basicMath.__init__(self, OSO, index, "CROSS_PRODUCT")
 
 class Opcode_step(Opcode_DSS): 
     def __init__(self, OSO, index):
@@ -679,7 +516,6 @@ class Opcode_step(Opcode_DSS):
         nodeGraph.AddLink(node, 1, self.Source2)
         
         nodeGraph.SetVar(self.Destination, node, 0)
-
 
 class Opcode_noise(Opcode):
     def __init__(self, OSO, index):
@@ -858,7 +694,6 @@ class Opcode_compassign(Opcode_DIS):
         nodeGraph.AddLink(nodeOut, idx, self.Source)
         nodeGraph.SetVar(self.Destination, nodeOut, 0)
 
-
 class Opcode_compref(Opcode_DSI):
     def __init__(self, OSO, index):
         Opcode_DSI.__init__(self, OSO, index)
@@ -873,14 +708,12 @@ class Opcode_compref(Opcode_DSI):
         nodeGraph.SetVar(self.Destination, node, idx)
         nodeGraph.AddLink(node, 0, self.Source)
 
-
 class Opcode_end(Opcode):
     def __init__(self, OSO, index):
         Opcode.__init__(self, OSO, index)
 
     def Generate(self, nodeGraph):
         pass
-
 
 class Opcode_functioncall(Opcode):
     def __init__(self, OSO, index):
@@ -900,13 +733,11 @@ class Opcode_functioncall(Opcode):
         for inst in self.Instructions:
             inst.Generate(nodeGraph)
 
-
 class Opcode_if_vars:
     def __init__(self):
         self.InitialValue = {}
         self.TrueValue = {}
         self.FalseValue = {}
-
 
 class basicLoop(Opcode):
     def __init__(self, OSO, index):
@@ -1002,11 +833,9 @@ class basicLoop(Opcode):
             for inst in self.DoneCode:
                 inst.Generate(nodeGraph)
 
-
 class Opcode_for(basicLoop):
     def __init__(self, OSO, index):
         basicLoop.__init__(self, OSO, index)
-
 
 class Opcode_if(Opcode):
     def __init__(self, OSO, index):

@@ -151,92 +151,28 @@ class Opcode_basicMath(Opcode_DSS):
 
     def GeneratePointPoint(self, nodeGraph):
         node = nodeGraph.CreateNode("ShaderNodeVectorMath")
-        if self.Operation in ['ADD', 'SUBTRACT']:
+        if self.Operation in ['ADD', 'SUBTRACT', 'MULTIPLY', 'DIVIDE', 'CROSS_PRODUCT', 'PROJECT', 'REFLECT', 'DOT_PRODUCT', 'DISTANCE', 'MINIMUM', 'MAXIMUM', 'MODULO', 'SNAP', ]:
             node.SetProperty("operation", self.Operation)
             nodeGraph.AddLink(node, 0, self.Source1)
             nodeGraph.AddLink(node, 1, self.Source2)
             nodeGraph.SetVar(self.Destination, node, 0)
-        elif self.Operation in ["MULTIPLY" ,"DIVIDE","MODULO"]:
-            node1 = nodeGraph.CreateNode('ShaderNodeSeparateXYZ')
-            nodeGraph.AddLink(node1, 0, self.Source1)
-            node2 = nodeGraph.CreateNode('ShaderNodeSeparateXYZ')
-            nodeGraph.AddLink(node2, 0, self.Source2)
-
-            nodex = nodeGraph.CreateNode("ShaderNodeMath")
-            nodex.SetProperty("operation", self.Operation)
-            nodeGraph.AddNodeLink(nodex, 0, node1, 0)
-            nodeGraph.AddNodeLink(nodex, 1, node2, 0)
-
-            nodey = nodeGraph.CreateNode("ShaderNodeMath")
-            nodey.SetProperty("operation", self.Operation)
-            nodeGraph.AddNodeLink(nodey, 0, node1, 1)
-            nodeGraph.AddNodeLink(nodey, 1, node2, 1)
-
-            nodez = nodeGraph.CreateNode("ShaderNodeMath")
-            nodez.SetProperty("operation", self.Operation)
-            nodeGraph.AddNodeLink(nodez, 0, node1, 2)
-            nodeGraph.AddNodeLink(nodez, 1, node2, 2)
-
-            nodeOut = nodeGraph.CreateNode('ShaderNodeCombineXYZ')
-            nodeGraph.AddNodeLink(nodeOut, 0, nodex, 0)
-            nodeGraph.AddNodeLink(nodeOut, 1, nodey, 0)
-            nodeGraph.AddNodeLink(nodeOut, 2, nodez, 0)
-            nodeGraph.SetVar(self.Destination, nodeOut, 0)
-
         else:
             raise ValueError(str('Unsupported math operation %s %s %s' % (
                 self.Source1.dataType, self.Operation, self.Source2.dataType)))
 
     def GeneratePointFloat(self, nodeGraph, vec, flt):
-        node = nodeGraph.CreateNode('ShaderNodeSeparateXYZ')
-        nodeGraph.AddLink(node, 0, vec)
-
-        nodex = nodeGraph.CreateNode("ShaderNodeMath")
-        nodex.SetProperty("operation", self.Operation)
-        nodeGraph.AddNodeLink(nodex, 0, node, 0)
-        nodeGraph.AddLink(nodex, 1, flt)
-
-        nodey = nodeGraph.CreateNode("ShaderNodeMath")
-        nodey.SetProperty("operation", self.Operation)
-        nodeGraph.AddNodeLink(nodey, 0, node, 1)
-        nodeGraph.AddLink(nodey, 1, flt)
-
-        nodez = nodeGraph.CreateNode("ShaderNodeMath")
-        nodez.SetProperty("operation", self.Operation)
-        nodeGraph.AddNodeLink(nodez, 0, node, 2)
-        nodeGraph.AddLink(nodez, 1, flt)
-
-        nodeOut = nodeGraph.CreateNode('ShaderNodeCombineXYZ')
-        nodeGraph.AddNodeLink(nodeOut, 0, nodex, 0)
-        nodeGraph.AddNodeLink(nodeOut, 1, nodey, 0)
-        nodeGraph.AddNodeLink(nodeOut, 2, nodez, 0)
-        nodeGraph.SetVar(self.Destination, nodeOut, 0)
+        node = nodeGraph.CreateNode("ShaderNodeVectorMath")
+        node.SetProperty("operation", self.Operation)
+        nodeGraph.AddLink(node, 0, self.Source1)
+        nodeGraph.AddLink(node, 1, self.Source2)
+        nodeGraph.SetVar(self.Destination, node, 0)
 
     def GenerateFloatPoint(self, nodeGraph):
-        node = nodeGraph.CreateNode('ShaderNodeSeparateXYZ')
-        nodeGraph.AddLink(node, 0, self.Source2)
-
-        nodex = nodeGraph.CreateNode("ShaderNodeMath")
-        nodex.SetProperty("operation", self.Operation)
-        nodeGraph.AddNodeLink(nodex, 1, node, 0)
-        nodeGraph.AddLink(nodex, 0, self.Source1)
-
-        nodey = nodeGraph.CreateNode("ShaderNodeMath")
-        nodey.SetProperty("operation", self.Operation)
-        nodeGraph.AddNodeLink(nodey, 1, node, 1)
-        nodeGraph.AddLink(nodey, 0, self.Source1)
-
-        nodez = nodeGraph.CreateNode("ShaderNodeMath")
-        nodez.SetProperty("operation", self.Operation)
-        nodeGraph.AddNodeLink(nodez, 1, node, 2)
-        nodeGraph.AddLink(nodez, 0, self.Source1)
-
-        nodeOut = nodeGraph.CreateNode('ShaderNodeCombineXYZ')
-        nodeGraph.AddNodeLink(nodeOut, 0, nodex, 0)
-        nodeGraph.AddNodeLink(nodeOut, 1, nodey, 0)
-        nodeGraph.AddNodeLink(nodeOut, 2, nodez, 0)
-        nodeGraph.SetVar(self.Destination, nodeOut, 0)
-
+        node = nodeGraph.CreateNode("ShaderNodeVectorMath")
+        node.SetProperty("operation", self.Operation)
+        nodeGraph.AddLink(node, 0, self.Source1)
+        nodeGraph.AddLink(node, 1, self.Source2)
+        nodeGraph.SetVar(self.Destination, node, 0)
 
     def Generate(self, nodeGraph):
         if self.Source1.IsNumeric() and self.Source2.IsNumeric():
@@ -251,7 +187,6 @@ class Opcode_basicMath(Opcode_DSS):
             raise ValueError(str('Unsupported math operation %s %s %s' % (
                 self.Source1.dataType, self.Operation, self.Source2.dataType)))
 
-
 class Opcode_basicMath1(Opcode_DS):
     def __init__(self, OSO, index, operation):
         Opcode_DS.__init__(self, OSO, index)
@@ -259,32 +194,23 @@ class Opcode_basicMath1(Opcode_DS):
 
     def GenerateFloat(self, nodeGraph):
         node = nodeGraph.CreateNode("ShaderNodeMath")
-        node.SetProperty("operation", self.Operation)
-        nodeGraph.AddLink(node, 0, self.Source)
-        nodeGraph.SetVar(self.Destination, node, 0)
+        if self.Operation in ['SQRT', 'INVERSE_SQRT', 'ABSOLUTE', 'EXPONENT', 'SIGN', 'FLOOR', 'CEIL', 'TRUNCATE', 'FRACT', 'SINE', 'COSINE', 'TANGENT', 'ARCSINE', 'ARCCOSINE', 'ARCTANGENT', 'ARCTAN2', 'SINH', 'COSH', 'TANH', 'RADIANS', 'DEGREES']:
+            node.SetProperty("operation", self.Operation)
+            nodeGraph.AddLink(node, 0, self.Source)
+            nodeGraph.SetVar(self.Destination, node, 0)
+        else:
+            raise ValueError(str('Unsupported math operation %s %s' % (
+                self.Source.dataType, self.Operation)))
 
     def GeneratePoint(self, nodeGraph):
-        node = nodeGraph.CreateNode('ShaderNodeSeparateXYZ')
-        nodeGraph.AddLink(node, 0, self.Source)
-
-        nodex = nodeGraph.CreateNode("ShaderNodeMath")
-        nodex.SetProperty("operation", self.Operation)
-        nodeGraph.AddNodeLink(nodex, 0, node, 0)
-
-        nodey = nodeGraph.CreateNode("ShaderNodeMath")
-        nodey.SetProperty("operation", self.Operation)
-        nodeGraph.AddNodeLink(nodey, 0, node, 1)
-
-        nodez = nodeGraph.CreateNode("ShaderNodeMath")
-        nodez.SetProperty("operation", self.Operation)
-        nodeGraph.AddNodeLink(nodez, 0, node, 2)
-
-        nodeOut = nodeGraph.CreateNode('ShaderNodeCombineXYZ')
-        nodeGraph.AddNodeLink(nodeOut, 0, nodex, 0)
-        nodeGraph.AddNodeLink(nodeOut, 1, nodey, 0)
-        nodeGraph.AddNodeLink(nodeOut, 2, nodez, 0)
-        nodeGraph.SetVar(self.Destination, nodeOut, 0)
-
+        node = nodeGraph.CreateNode("ShaderNodeVectorMath")
+        if self.Operation in ['LENGTH', 'NORMALIZE', 'ABSOLUTE', 'FLOOR', 'CEIL', 'FRACTION', 'SINE', 'COSINE', 'TANGENT']:
+            node.SetProperty("operation", self.Operation)
+            nodeGraph.AddLink(node, 0, self.Source)
+            nodeGraph.SetVar(self.Destination, node, 0)
+        else:
+            raise ValueError(str('Unsupported math operation %s %s' % (
+                self.Source.dataType, self.Operation)))
 
     def Generate(self, nodeGraph):
         if self.Source.IsNumeric():
